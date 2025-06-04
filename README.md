@@ -242,6 +242,8 @@ SSH tunneling is supported for secure remote connections with PostgreSQL (pg) an
 3. **ssh_port**: The SSH port on the bastion host (default is 22).
 4. **ssh_username**: The SSH username for authentication on the bastion host.
 
+SSH tunneling is supported using key-based authentication. Ensure you have SSH key-based authentication configured with your public key added to the remote server's authorized keys.
+
 ## Multi-Database Support
 
 When connecting to multiple databases, you need to specify which database to use for each query:
