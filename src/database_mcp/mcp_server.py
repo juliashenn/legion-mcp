@@ -526,30 +526,19 @@ def get_table_types(table_name: str, ctx: Context, db_id: str) -> str:
 def describe_table(ctx: Context, table_name: str, db_id: str) -> str:
     """Get detailed description of a table including column names and types"""
     try:
-        db_context = ctx.request_context.lifespan_context
-
+        db_context: DbContext = ctx.request_context.lifespan_context
+        
         if db_id not in db_context.db_configs:
             return f"Error: Invalid database ID {db_id}"
         
         db_config = db_context.db_configs[db_id]
-
-        custom_query = f"""
-            SELECT 
-                COLUMN_NAME,
-                DATA_TYPE
-            FROM INFORMATION_SCHEMA.COLUMNS 
-            WHERE TABLE_SCHEMA = 'legionTest' 
-            AND TABLE_NAME = 'users'
-            ORDER BY ORDINAL_POSITION;"""
-        
-        result = db_config.query_runner.run_query(custom_query)
         
         # Get column names and types
-        columns = [row['COLUMN_NAME'] for row in result['rows']]
-        types = {row['COLUMN_NAME']: row['DATA_TYPE'] for row in result["rows"]}
-
+        columns = db_config.query_runner.get_table_columns(table_name)
+        types = db_config.query_runner.get_table_types(table_name)
+        
         # Build description
-        description = f"Table: users in Database: {db_config.description} (ID: 0)\n\n"
+        description = f"Table: {table_name} in Database: {db_config.description} (ID: {db_id})\n\n"
         description += "Columns:\n"
         
         for column in columns:
@@ -558,7 +547,7 @@ def describe_table(ctx: Context, table_name: str, db_id: str) -> str:
         
         return description
     except Exception as e:
-        return f"Error describing table {table_name} using query: {str(e)}"
+        return f"Error describing table {table_name}: {str(e)}"
 
 @mcp.tool()
 def get_table_sample(ctx: Context, table_name: str, db_id: str, limit: int = 10) -> str:

@@ -134,24 +134,24 @@ def test_execute_query(ctx: Context, db_config):
     assert query in ctx.request_context.lifespan_context.query_history[0]
     
 
-# def test_describe_table(ctx: Context, db_config):
-#     """Test describe_table function"""
-#     ctx.request_context.lifespan_context.db_configs = {0: db_config}
-#     # Test with valid parameters
+def test_describe_table(ctx: Context, db_config):
+    """Test describe_table function"""
+    ctx.request_context.lifespan_context.db_configs = {0: db_config}
+    # Test with valid parameters
         
-#     # result = describe_table(ctx, table_name="users", db_id=0)
-#     result = db_config.query_runner.get_table_types("users")
+    result = describe_table(ctx, table_name="users", db_id=0)
+    # result = db_config.query_runner.get_table_types("users")
     
-#     print(result)
-#     result = db_config.query_runner.get_table_columns("users")
+    # print(result)
+    # result = db_config.query_runner.get_table_columns("users")
 
-#     # Verify result
-#     print(result)
-#     assert "Table: users in Database: Test DB" in result
-#     assert "id (int)" in result
-#     assert "name (varchar)" in result
-#     assert "email (varchar)" in result
-#     assert "created_at (timestamp)" in result
+    # Verify result
+    print(result)
+    assert "Table: users in Database: Test DB" in result
+    assert "id (int)" in result
+    assert "name (varchar)" in result
+    assert "email (varchar)" in result
+    assert "created_at (timestamp)" in result
 
 
 def describe_table_query(ctx: Context, table_name: str, db_id: str) ->str:
