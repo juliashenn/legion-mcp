@@ -179,7 +179,7 @@ def describe_table_query(ctx: Context, table_name: str, db_id: str) ->str:
         types = {row['COLUMN_NAME']: row['DATA_TYPE'] for row in result["rows"]}
 
         # Build description
-        description = f"Table: users in Database: {db_config.description} (ID: 0)\n\n"
+        description = f"Table: {table_name} in Database: {db_config.description} (ID: {db_id})\n\n"
         description += "Columns:\n"
         
         for column in columns:
