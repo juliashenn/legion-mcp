@@ -24,6 +24,7 @@ Whether you're building AI agents that need database access or simply want a uni
 
 - Multi-database support - connect to multiple databases simultaneously
 - Database access via Legion Query Runner
+- SSH tunneling for secure remote database connections
 - Model Context Protocol (MCP) support for AI assistants
 - Expose database operations as MCP resources, tools, and prompts
 - Multiple deployment options (standalone MCP server, FastAPI integration)
@@ -44,6 +45,8 @@ Whether you're building AI agents that need database access or simply want a uni
 | Big Query | bigquery |
 | Oracle DB | oracle |
 | SQLite | sqlite |
+
+SSH tunneling is supported for PostgreSQL (pg) and MySQL (mysql) databases only.
 
 We use Legion Query Runner library as connectors. You can find more info on their [api doc](https://theralabs.github.io/legion-database/docs/category/query-runners).
 
@@ -91,7 +94,28 @@ REPLACE DB_TYPE and DB_CONFIG with your connection info.
         ],
         "env": {
           "DB_TYPE": "pg",
-          "DB_CONFIG": "{\"host\":\"localhost\",\"port\":5432,\"user\":\"user\",\"password\":\"pw\",\"dbname\":\"dbname\"}"
+          "DB_CONFIG": "{\"host\":\"localhost\",\"port\":5432,\"user\":\"user\",\"passwd\":\"pw\",\"db\":\"dbname\"}"
+        },
+        "disabled": true,
+        "autoApprove": []
+      }
+    }
+}
+```
+
+**UV Configuration Example (Single Database via SSH tunneling):**
+
+```json
+{
+    "mcpServers": {
+      "database-mcp": {
+        "command": "uvx",
+        "args": [
+          "database-mcp"
+        ],
+        "env": {
+          "DB_TYPE": "pg",
+          "DB_CONFIG": "{\"host\":\"localhost\",\"port\":5432,\"user\":\"user\",\"passwd\":\"pw\",\"db\":\"dbname\",\"ssh_tunnel_enabled\":true,\"ssh_host\":\"ssh.example.com\",\"ssh_port\":22,\"ssh_username\":\"ssh_user\"}"
         },
         "disabled": true,
         "autoApprove": []
@@ -111,7 +135,7 @@ REPLACE DB_TYPE and DB_CONFIG with your connection info.
           "database-mcp"
         ],
         "env": {
-          "DB_CONFIGS": "[{\"id\":\"pg_main\",\"db_type\":\"pg\",\"configuration\":{\"host\":\"localhost\",\"port\":5432,\"user\":\"user\",\"password\":\"pw\",\"dbname\":\"postgres\"},\"description\":\"PostgreSQL Database\"},{\"id\":\"mysql_data\",\"db_type\":\"mysql\",\"configuration\":{\"host\":\"localhost\",\"port\":3306,\"user\":\"root\",\"password\":\"pass\",\"database\":\"mysql\"},\"description\":\"MySQL Database\"}]"
+          "DB_CONFIGS": "[{\"id\":\"pg_main\",\"db_type\":\"pg\",\"configuration\":{\"host\":\"localhost\",\"port\":5432,\"user\":\"user\",\"passwd\":\"pw\",\"db\":\"postgres\"},\"description\":\"PostgreSQL Database\"},{\"id\":\"mysql_data\",\"db_type\":\"mysql\",\"configuration\":{\"host\":\"localhost\",\"port\":3306,\"user\":\"root\",\"passwd\":\"pass\",\"db\":\"mysql\"},\"description\":\"MySQL Database\"}]"
         },
         "disabled": true,
         "autoApprove": []
@@ -141,7 +165,7 @@ pip install database-mcp
       ],
       "env": {
         "DB_TYPE": "pg",
-        "DB_CONFIG": "{\"host\":\"localhost\",\"port\":5432,\"user\":\"user\",\"password\":\"pw\",\"dbname\":\"dbname\"}"
+        "DB_CONFIG": "{\"host\":\"localhost\",\"port\":5432,\"user\":\"user\",\"passwd\":\"pw\",\"db\":\"dbname\"}"
       }
     }
   }
@@ -161,22 +185,30 @@ python mcp_server.py
 #### Environment Variables (Single Database)
 
 ```bash
-export DB_TYPE="pg"  # or mysql, postgresql, etc.
-export DB_CONFIG='{"host":"localhost","port":5432,"user":"username","password":"password","dbname":"database_name"}'
+export DB_TYPE="pg"  # or mysql, sqlite, etc.
+export DB_CONFIG='{"host":"localhost","port":5432,"user":"username","passwd":"password","db":"database_name"}'
+uv run src/database_mcp/mcp_server.py
+```
+
+#### Environment Variables (Single Database via SSH tunneling)
+
+```bash
+export DB_TYPE="pg"  # or mysql
+export DB_CONFIG='{"host": "internal.db","port": 5432,"user": "username","passwd": "password","db": "database_name","ssh_tunnel_enabled": true,"ssh_host": "ssh.example.com", "ssh_port": 22,"ssh_username": "ssh_user"}'
 uv run src/database_mcp/mcp_server.py
 ```
 
 #### Environment Variables (Multiple Databases)
 
 ```bash
-export DB_CONFIGS='[{"id":"pg_main","db_type":"pg","configuration":{"host":"localhost","port":5432,"user":"username","password":"password","dbname":"database_name"},"description":"PostgreSQL Database"},{"id":"mysql_users","db_type":"mysql","configuration":{"host":"localhost","port":3306,"user":"root","password":"pass","database":"mysql"},"description":"MySQL Database"}]'
+export DB_CONFIGS='[{"id":"pg_main","db_type":"pg","configuration":{"host":"localhost","port":5432,"user":"username","passwd":"password","db":"database_name"},"description":"PostgreSQL Database"},{"id":"mysql_users","db_type":"mysql","configuration":{"host":"localhost","port":3306,"user":"root","passwd":"pass","db":"mysql"},"description":"MySQL Database"}]'
 uv run src/database_mcp/mcp_server.py
 ```
 
 If you don't specify an ID, the system will generate one automatically based on the database type and description:
 
 ```bash
-export DB_CONFIGS='[{"db_type":"pg","configuration":{"host":"localhost","port":5432,"user":"username","password":"password","dbname":"database_name"},"description":"PostgreSQL Database"},{"db_type":"mysql","configuration":{"host":"localhost","port":3306,"user":"root","password":"pass","database":"mysql"},"description":"MySQL Database"}]'
+export DB_CONFIGS='[{"db_type":"pg","configuration":{"host":"localhost","port":5432,"user":"username","passwd":"password","db":"database_name"},"description":"PostgreSQL Database"},{"db_type":"mysql","configuration":{"host":"localhost","port":3306,"user":"root","passwd":"pass","db":"mysql"},"description":"MySQL Database"}]'
 # IDs will be generated as something like "pg_postgres_0" and "my_mysqldb_1"
 uv run src/database_mcp/mcp_server.py
 ```
@@ -184,16 +216,31 @@ uv run src/database_mcp/mcp_server.py
 #### Command Line Arguments (Single Database)
 
 ```bash
-python mcp_server.py --db-type pg --db-config '{"host":"localhost","port":5432,"user":"username","password":"password","dbname":"database_name"}'
+python mcp_server.py --db-type pg --db-config '{"host":"localhost","port":5432,"user":"username","passwd":"password","db":"database_name"}'
+```
+
+#### Command Line Arguments (Single Database via SSH tunneling)
+
+```bash
+python mcp_server.py --db-type pg --db-config '{"host":"localhost","port":5432,"user":"username","passwd":"password","db":"database_name","ssh_tunnel_enabled": true,"ssh_host": "ssh.example.com", "ssh_port": 22,"ssh_username": "ssh_user"}'
 ```
 
 #### Command Line Arguments (Multiple Databases)
 
 ```bash
-python mcp_server.py --db-configs '[{"id":"pg_main","db_type":"pg","configuration":{"host":"localhost","port":5432,"user":"username","password":"password","dbname":"database_name"},"description":"PostgreSQL Database"},{"id":"mysql_users","db_type":"mysql","configuration":{"host":"localhost","port":3306,"user":"root","password":"pass","database":"mysql"},"description":"MySQL Database"}]'
+python mcp_server.py --db-configs '[{"id":"pg_main","db_type":"pg","configuration":{"host":"localhost","port":5432,"user":"username","passwd":"password","db":"database_name"},"description":"PostgreSQL Database"},{"id":"mysql_users","db_type":"mysql","configuration":{"host":"localhost","port":3306,"user":"root","passwd":"pass","db":"mysql"},"description":"MySQL Database"}]'
 ```
 
 Note that you can specify custom IDs for each database using the `id` field, or let the system generate them based on database type and description.
+
+## SSH Tunneling Support
+
+SSH tunneling is supported for secure remote connections with PostgreSQL (pg) and MySQL (mysql) databases. To enable SSH tunneling, include the following parameters in your database configuration:
+
+1. **ssh_tunnel_enabled**: Set to true to enable SSH tunneling (default is false).
+2. **ssh_host**: The SSH bastion host address.
+3. **ssh_port**: The SSH port on the bastion host (default is 22).
+4. **ssh_username**: The SSH username for authentication on the bastion host.
 
 ## Multi-Database Support
 

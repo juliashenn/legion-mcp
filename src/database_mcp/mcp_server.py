@@ -162,7 +162,9 @@ if not _is_test:
         print("\n2. For direct execution with single database:")
         print("   python mcp_server.py --db-type <db_type> --db-config '<json_config>'")
         print("   Example: python mcp_server.py --db-type mysql --db-config '{\"host\":\"localhost\",\"port\":3306,\"user\":\"root\",\"password\":\"pass\",\"database\":\"test\"}'")
-        print("\n3. For direct execution with multiple databases:")
+        print("\n3. For direct execution with single database via ssh tunneling:")
+        print("   python mcp_server.py --db-type <db_type> --db-config '[{\"host\":\"localhost\",\"port\":5432,\"user\":\"user\",\"passwd\":\"pw\",\"db\":\"dbname\",\"ssh_tunnel_enabled\":true,\"ssh_host\":\"ssh.example.com\",\"ssh_port\":22,\"ssh_username\":\"ssh_user\"}]'")
+        print("\n4. For direct execution with multiple databases:")
         print("   python mcp_server.py --db-configs '[{\"db_type\":\"pg\",\"configuration\":{\"host\":\"localhost\"},\"description\":\"My PostgreSQL DB\"}]'")
         sys.exit(1)
 
@@ -524,19 +526,30 @@ def get_table_types(table_name: str, ctx: Context, db_id: str) -> str:
 def describe_table(ctx: Context, table_name: str, db_id: str) -> str:
     """Get detailed description of a table including column names and types"""
     try:
-        db_context: DbContext = ctx.request_context.lifespan_context
-        
+        db_context = ctx.request_context.lifespan_context
+
         if db_id not in db_context.db_configs:
             return f"Error: Invalid database ID {db_id}"
         
         db_config = db_context.db_configs[db_id]
+
+        custom_query = f"""
+            SELECT 
+                COLUMN_NAME,
+                DATA_TYPE
+            FROM INFORMATION_SCHEMA.COLUMNS 
+            WHERE TABLE_SCHEMA = 'legionTest' 
+            AND TABLE_NAME = 'users'
+            ORDER BY ORDINAL_POSITION;"""
+        
+        result = db_config.query_runner.run_query(custom_query)
         
         # Get column names and types
-        columns = db_config.query_runner.get_table_columns(table_name)
-        types = db_config.query_runner.get_table_types(table_name)
-        
+        columns = [row['COLUMN_NAME'] for row in result['rows']]
+        types = {row['COLUMN_NAME']: row['DATA_TYPE'] for row in result["rows"]}
+
         # Build description
-        description = f"Table: {table_name} in Database: {db_config.description} (ID: {db_id})\n\n"
+        description = f"Table: users in Database: {db_config.description} (ID: 0)\n\n"
         description += "Columns:\n"
         
         for column in columns:
@@ -545,7 +558,7 @@ def describe_table(ctx: Context, table_name: str, db_id: str) -> str:
         
         return description
     except Exception as e:
-        return f"Error describing table {table_name}: {str(e)}"
+        return f"Error describing table {table_name} using query: {str(e)}"
 
 @mcp.tool()
 def get_table_sample(ctx: Context, table_name: str, db_id: str, limit: int = 10) -> str:
